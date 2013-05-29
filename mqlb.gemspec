@@ -19,4 +19,5 @@ Gem::Specification.new do |gem|
 
   gem.add_runtime_dependency 'bunny', "~> 0.9.0.pre9"
   gem.add_runtime_dependency 'eventmachine'
+  gem.add_runtime_dependency 'http_parser.rb'
 end
