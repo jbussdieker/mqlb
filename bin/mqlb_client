@@ -1,0 +1,16 @@
+#!/usr/bin/env ruby
+require 'bunny'
+require 'net/http'
+
+$conn = Bunny.new
+$conn.start
+$conn.exchange('outgoing_response', :type => :direct)
+$conn.exchange('incoming_request', :type => :direct)
+$conn.queue('requests').bind('incoming_request')
+
+$conn.queue('requests').subscribe(:block => true, :header => true) do |delivery_info, properties, payload|
+  p delivery_info
+  #resp = Net::HTTP.get(URI.parse("http://www.google.com"))
+  resp = "HTTP/1.0 200 OK\r\n\r\nOK"
+  $conn.exchange('outgoing_response').publish(resp, :key => properties[:reply_to])
+end

@@ -1,0 +1,32 @@
+#!/usr/bin/env ruby
+require 'bunny'
+require 'eventmachine'
+
+
+class Connection < EM::Connection
+  def receive_data(data)
+    # TODO: Actually parse
+    issue_request(data)
+  end
+
+  def issue_request(data)
+    $conn = Bunny.new
+    $conn.start
+    $conn.exchange('outgoing_response', :type => :direct)
+    $conn.exchange('incoming_request', :type => :direct)
+    reply = $conn.queue
+    reply.bind('outgoing_response', :routing_key => reply.name)
+    $conn.exchange('incoming_request').publish(data, :reply_to => reply.name)
+    reply.subscribe do |delivery_info, properties, payload|
+      p delivery_info
+      send_data payload
+      close_connection_after_writing
+      reply.delete
+      $conn.close
+    end
+  end
+end
+
+EM.run do
+  EM.start_server '0.0.0.0', 8080, Connection
+end
