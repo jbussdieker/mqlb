@@ -1,3 +1,5 @@
+require 'bunny'
+
 module Mqlb
   module Server
     class Request

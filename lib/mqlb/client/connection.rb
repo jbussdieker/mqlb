@@ -2,8 +2,20 @@ require 'eventmachine'
 require "http/parser"
 
 module Mqlb
-  module Server
+  module Client
     class Connection < EM::Connection
+      attr_accessor :request_data, :callback, :host
+
+      def self.connect(host, data, port = 80, ssl=false, &callback)
+        EventMachine.connect(host, port, self, host, data, callback)
+      end
+
+      def initialize(host, data, callback)
+        @host = host
+        @request_data = data
+        @callback = callback
+      end
+
       def log(msg)
         puts "#{remote_host}: #{msg}"
       end
@@ -15,7 +27,7 @@ module Mqlb
       end
 
       def remote_host
-        @remote_host ||= Socket.unpack_sockaddr_in(get_peername).reverse.join(":")
+        @host
       end
 
       def post_init
@@ -24,19 +36,16 @@ module Mqlb
         @raw_data = ""
         @parser = Http::Parser.new
         @parser.on_message_complete = proc do |env|
-          issue_request
+          @callback.call(@raw_data, @parser)
         end
+      end
+
+      def connection_completed
+        send_data @request_data
       end
 
       def unbind
         log "Connection closed"
-      end
-
-      def issue_request
-        #log "Issuing upstream request for #{@parser.headers["Host"]}"
-
-        req = Request.new(self, @raw_data)
-        req.issue_request
       end
     end
   end
